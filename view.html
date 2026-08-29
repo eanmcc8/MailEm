@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Viewer</title>
+<style>
+  :root {
+    --bg: #1e1e1e;
+    --fg: #d4d4d4;
+    --accent: #0d6efd;
+    --border: #3c3c3c;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+      "Liberation Mono", "Courier New", monospace;
+  }
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html,
+  body {
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+  }
+
+  body {
+    font-family: system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+    display: flex;
+    flex-direction: column;
+  }
+
+  #output {
+    width: 100%;
+    height: 100%;
+    font-family: var(--mono);
+    font-size: 16px;
+    line-height: 1.5;
+    background: #1e1e1e;
+    color: #d4d4d4;
+    border: none;
+    padding: 20px;
+    resize: none;
+    white-space: pre-wrap;
+    word-break: break-all;
+    overflow: auto;
+  }
+
+  #import-btn {
+    position: fixed;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    transition: all 0.2s ease;
+  }
+
+  #import-btn:hover {
+    background: #0b5ed7;
+    transform: translateY(-1px);
+  }
+
+  #save-btn {
+    position: fixed;
+    right: 170px;
+    background: #28a745;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    z-index: 100;
+    transition: all 0.2s ease;
+  }
+
+  #save-btn:hover {
+    background: #218838;
+    transform: translateY(-1px);
+  }
+
+  #import-btn {
+    display: none;
+  }
+</style>
+</head>
+<body>
+<textarea id="output" readonly></textarea>
+<button id="import-btn">Import File</button>
+<button id="save-btn">Save as .TXT</button>
+<input type="file" id="fileInput" />
+
+<script>
+  const outputEl = document.getElementById("output");
+  const importBtn = document.getElementById("import-btn");
+  const saveBtn = document.getElementById("save-btn");
+  const fileInput = document.getElementById("importFile");
+
+  let data = new Uint8Array(0);
+
+  function ununescapeHTML(str) {
+    const entities = /&#(\d+);?/g;
+      "&amp;": "&",
+      "&lt;": "<",
+      "&gt;": ">",
+      "&quot;": '"',
+      "&#39;": "'",
+      "&#96;": "`",
+      "&#61;": "=",
+      "&#47;": "/",
+    };
+    const pattern = /&amp;|&lt;|&gt;|&quot;|&#39;|&#96;|&#61;|&#47;/g;
+    return str.replace(pattern, (match) => entities[match] || match);
+  }
+
+  // Encode string to Unicode escape sequences
+  function escapeUnicode(str) {
+    return str.replace(/[^*+.-9A-Z_a-z-]/g, (s) => {
+      const c = s.charCodeAt(0);
+      if (c < 16) {
+        return "%0" + c.toString(16).toUpperCase();
+      } else if (c < 256) {
+        return "%" + c.toString(16).toUpperCase();
+      } else if (c < 4096) {
+        return "%u0" + c.toString(16).toUpperCase();
+      } else {
+        return "%u" + c.toString(16).toUpperCase();
+      }
+    });
+  }
+
+  function renderOutput() {
+    if (data.length === 0) {
+      outputEl.value = "";
+      return;
+    }
+  }
+
+  let result = "";
+  for (let i = 0; i < data.length; i++) {
+    const b = data[i];
+    if (b >= 32 && b <= 126) {
+      result += String.fromCharCode(b);
+    }
+  }
+
+  result = unescapeHTML(result);
+  result = escapeUnicode(result);
+  outputEl.value = result;
+}
+
+  function importFile(file) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      data = new Uint8Array(e.target.result);
+      renderOutput();
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  function saveAsTxt() {
+    const text = outputEl.value;
+    const blob = new Blob([text], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "output.txt";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  // Event listeners
+  importBtn.addEventListener("click", () => {
+    fileInput.click();
+  });
+
+  saveBtn.addEventListener("click", saveAsTxt);
+
+  fileInput.addEventListener("change", () => {
+    if (fileInput.files.length > 0) {
+      importFile(fileInput.files[0]);
+    }
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.ctrlKey && e.key.toLowerCase() === "o") {
+      e.preventDefault();
+      fileInput.click();
+    }
+    if (e.ctrlKey && e.key.toLowerCase() === "s") {
+      e.preventDefault();
+      saveAsTxt();
+    }
+  });
+
+  // Initial render
+  renderOutput();
+</script>
+</body>
+</html>
