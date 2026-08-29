@@ -12,7 +12,6 @@ import subprocess
 import tempfile
 import time
 import zipfile
-
 import browser_cookie3 as bc3
 import psutil
 import requests
